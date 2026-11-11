@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#080312" />
+  <title>Una galaxia para ti ♥</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080312; font-family: 'DM Sans', sans-serif; }
+    #space { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; -webkit-tap-highlight-color: transparent; }
+    .vignette { pointer-events:none; position:fixed; inset:0; z-index:2; background: radial-gradient(ellipse at center, transparent 25%, rgba(5,1,13,.25) 65%, rgba(3,0,8,.8) 120%); }
+    .top { position:fixed; z-index:3; top: max(22px, env(safe-area-inset-top)); left:0; right:0; text-align:center; pointer-events:none; padding:0 18px; }
+    .eyebrow { color:#f4b8d8; text-transform:uppercase; letter-spacing:.32em; font: 10px/1.5 Arial,sans-serif; opacity:.85; }
+    h1 { color:#fff0f7; font-family:'Playfair Display', Georgia, serif; font-size:clamp(30px,5.5vw,50px); font-weight:400; letter-spacing:.035em; margin:7px 0 0; text-shadow:0 0 24px #ff4d9b, 0 0 58px #a32181, 0 0 90px #ff8ac4; }
+    .heart-note { position:fixed; z-index:3; bottom: max(26px, calc(env(safe-area-inset-bottom) + 16px)); left:0; right:0; text-align:center; color:rgba(255,195,222,.85); font:italic 15px/1.5 'Playfair Display', Georgia,serif; pointer-events:none; }
+    #soundless { position:fixed; z-index:4; right:16px; top:max(16px, env(safe-area-inset-top)); border:1px solid rgba(255,190,220,.25); color:#ffe5f2; background:rgba(24,5,30,.45); border-radius:30px; padding:9px 12px; font:10px Arial,sans-serif; letter-spacing:.12em; backdrop-filter:blur(8px); }
+    #soundless:active { transform:scale(.96); }
+    .loading { position:fixed; inset:0; z-index:10; display:grid; place-items:center; color:#ffd5e8; background:#080312; font:12px Arial,sans-serif; letter-spacing:.12em; transition:opacity .8s ease; padding:28px; text-align:center; }
+    .loading.hide { opacity:0; pointer-events:none; }
+    .load-card { width:min(340px,88vw); }
+    .load-title { font:500 13px/1.5 'DM Sans',sans-serif; letter-spacing:.18em; margin-bottom:18px; }
+    .load-track { height:5px; width:100%; overflow:hidden; border-radius:9px; background:rgba(255,220,240,.13); box-shadow:0 0 18px rgba(255,90,170,.12); }
+    .load-fill { height:100%; width:4%; border-radius:9px; background:linear-gradient(90deg,#a94caa,#ff9bc9); box-shadow:0 0 14px #ff69ad; transition:width .45s ease; }
+    .load-status { min-height:38px; margin-top:13px; color:rgba(255,220,240,.76); font:12px/1.5 'DM Sans',sans-serif; letter-spacing:.02em; }
+    .load-error { display:none; margin-top:14px; color:#ffd4e7; font:12px/1.55 'DM Sans',sans-serif; letter-spacing:0; }
+    .load-error a { color:#ffadd2; }
+    @media (max-width:600px) { .eyebrow {font-size:9px; letter-spacing:.24em;} .heart-note {font-size:14px; padding:0 24px;} }
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div class="loading" id="loading">
+    <div class="load-card">
+      <div class="load-title">PREPARANDO…</div>
+      <div class="load-track"><div class="load-fill" id="load-fill"></div></div>
+      <div class="load-status" id="load-status">Comprobando conexión…</div>
+      <div class="load-error" id="load-error"></div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const fill = document.getElementById('load-fill');
+      const status = document.getElementById('load-status');
+      const error = document.getElementById('load-error');
+      let progress = 5, done = false;
+      const set = (n, msg) => { progress = n; fill.style.width = n + '%'; status.textContent = msg; };
+      const timer = setTimeout(() => {
+        if (!done) {
+          status.textContent = 'La carga está tardando más de lo normal…';
+          error.style.display = 'block';
+          error.innerHTML = 'No he podido confirmar la carga. Puede ser la conexión o el navegador de WhatsApp. Prueba abrir este archivo desde Safari; si sigue igual, probablemente el navegador está bloqueando los módulos 3D.';
+        }
+      }, 12000);
+      window.__galaxyLoaded = () => {
+        done = true; clearTimeout(timer); set(100, 'Listo.');
+      };
+      window.addEventListener('error', (e) => {
+        if (!done) {
+          status.textContent = 'Hubo un problema al iniciar la galaxia.';
+          error.style.display = 'block';
+          error.textContent = 'El navegador no pudo ejecutar una parte del universo 3D. Prueba abrir el archivo directamente en Safari.';
+        }
+      });
+      set(12, 'Comprobando conexión con el motor 3D…');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      fetch('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js', { signal: controller.signal })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); set(58, 'Conexión correcta. Cargando…'); })
+        .then(() => fetch('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js', { signal: controller.signal }))
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); set(82, 'Conexión lista. Preparando…'); })
+        .catch(() => {
+          if (!done) {
+            set(18, 'No se pudo descargar el motor 3D.');
+            error.style.display = 'block';
+            error.textContent = 'Puede ser tu conexión o una restricción del navegador de WhatsApp. Prueba con otra red o abre el archivo en Safari.';
+          }
+        })
+        .finally(() => clearTimeout(timeout));
+    })();
+  </script>
+  <canvas id="space"></canvas>
+  <div class="vignette"></div>
+  <header class="top">
+    <div class="eyebrow">para Cass, con cariño</div>
+    <h1>Tu galaxia, mi niña</h1>
+  </header>
+  <div class="heart-note">Cass, entre millones de estrellas, qué bonito que coincidamos tú y yo. ♥</div>
+  
+  <button id="soundless" type="button" aria-label="Volver al centro">◎ CENTRAR</button>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ✨ Personaliza aquí los mensajes que flotan alrededor del corazón.
+    const messages = [
+      'Cass, ojalá estuvieras aquí un ratito',
+      'Mi niña, hoy también me acordé de ti',
+      'Quisiera darte un beso ahora mismo',
+      'Me gusta cuando hablamos y se me pasa la hora',
+      'Cass, tienes una sonrisa que se me queda en la cabeza',
+      'Ven, que tengo un abrazo guardado para ti',
+      'A veces me dan unas ganas enormes de verte',
+      'Mi niña bonita, qué linda eres',
+      'Me encanta esa forma tan tuya de ser',
+      'Si estuvieras aquí, te tendría abrazada',
+      'No te voy a mentir: me encantas',
+      'Me haces falta en esos ratitos en los que quisiera contarte algo',
+      'Tengo pendiente llenarte de besitos',
+      'Qué ganas de estar cerquita de ti',
+      'Me gusta mirarte y hacer como si no me pusiera nervioso',
+      'Cass, espero que estés sonriendo al leer esto',
+      'Ven un poquito más cerca… así está mejor',
+      'Te daría un beso y después otro, por si acaso',
+      'Hay días en los que simplemente quisiera estar contigo',
+      'Mi niña, qué bonito es coincidir contigo',
+      'Me gusta hasta cuando te pones un poquito caprichosa',
+      'Ojalá pudiera detener un rato cuando estoy contigo',
+      'No sé cómo le haces, pero siempre terminas en mis pensamientos',
+      'Un abrazo largo, un beso lento y tú conmigo',
+      'Cass, esta galaxia se ve más bonita porque estás en ella',
+      '♥'
+    ];
+
+    const canvas = document.querySelector('#space');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x080312);
+    scene.fog = new THREE.FogExp2(0x080312, 0.0085);
+
+    const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 1200);
+    camera.position.set(0, 1.5, 31);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.045;
+    controls.enablePan = false;
+    controls.minDistance = 13;
+    controls.maxDistance = 58;
+    controls.rotateSpeed = 0.42;
+    // Zoom propio con interpolación suave (rueda y gesto de pellizco).
+    controls.enableZoom = false;
+    let wantedDistance = camera.position.distanceTo(controls.target);
+    const minZoom = 13, maxZoom = 58;
+    function requestZoom(next) { wantedDistance = THREE.MathUtils.clamp(next, minZoom, maxZoom); }
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      requestZoom(wantedDistance * Math.exp(e.deltaY * 0.001));
+    }, { passive: false });
+    let pinchStart = 0, pinchDistance = wantedDistance;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const dx=e.touches[0].clientX-e.touches[1].clientX;
+        const dy=e.touches[0].clientY-e.touches[1].clientY;
+        pinchStart=Math.hypot(dx,dy); pinchDistance=wantedDistance;
+      }
+    }, { passive: true });
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && pinchStart > 0) {
+        const dx=e.touches[0].clientX-e.touches[1].clientX;
+        const dy=e.touches[0].clientY-e.touches[1].clientY;
+        const current=Math.hypot(dx,dy);
+        requestZoom(pinchDistance * pinchStart / Math.max(1,current));
+      }
+    }, { passive: true });
+    canvas.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinchStart=0; }, { passive: true });
+    controls.target.set(0, 0, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.22;
+
+    scene.add(new THREE.AmbientLight(0xc49abb, 1.65));
+    const softFill = new THREE.HemisphereLight(0x9b8cff, 0x3a102e, 1.15);
+    scene.add(softFill);
+    const heartRim = new THREE.DirectionalLight(0xffc5df, 2.2);
+    heartRim.position.set(-5, 8, 12); scene.add(heartRim);
+    const pinkLight = new THREE.PointLight(0xff367f, 95, 55, 2);
+    pinkLight.position.set(0, 2, 5); scene.add(pinkLight);
+    const warmLight = new THREE.PointLight(0xffa2c9, 45, 45, 2);
+    warmLight.position.set(-8, -5, -5); scene.add(warmLight);
+    const blueLight = new THREE.PointLight(0x655cff, 35, 60, 2);
+    blueLight.position.set(8, 5, -10); scene.add(blueLight);
+
+    // Campo estelar en profundidad: capas 3D con halos suaves y tamaños distintos.
+    function starGlowTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(32,32,0,32,32,31);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(.12, 'rgba(255,225,245,.9)');
+      g.addColorStop(.35, 'rgba(190,150,255,.28)');
+      g.addColorStop(1, 'rgba(120,90,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+    }
+    const starGlow = starGlowTexture();
+
+    function makeStars(count, spread, size, opacity, glowSize) {
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const palette = [new THREE.Color('#ffffff'), new THREE.Color('#ffc5e1'), new THREE.Color('#a9a4ff'), new THREE.Color('#ffd99c')];
+      for (let i = 0; i < count; i++) {
+        positions[i*3] = (Math.random() - .5) * spread;
+        positions[i*3+1] = (Math.random() - .5) * spread;
+        positions[i*3+2] = (Math.random() - .5) * spread;
+        const c = palette[Math.floor(Math.random()*palette.length)];
+        colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      const haloMat = new THREE.PointsMaterial({size:glowSize,map:starGlow,vertexColors:true,transparent:true,opacity:opacity*.42,sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending});
+      const coreMat = new THREE.PointsMaterial({size,map:starGlow,vertexColors:true,transparent:true,opacity,sizeAttenuation:true,depthWrite:false,blending:THREE.AdditiveBlending});
+      const group = new THREE.Group();
+      group.add(new THREE.Points(geo,haloMat), new THREE.Points(geo,coreMat));
+      scene.add(group); return group;
+    }
+    const farStars = makeStars(4200, 520, .9, .92, 2.8);
+    const midStars = makeStars(1500, 260, 1.25, .95, 3.8);
+    const nearStars = makeStars(950, 150, 1.7, 1, 5.2);
+
+    // Nebulosas suaves creadas con canvas, colocadas en planos dentro del espacio.
+    function nebulaTexture(colorA, colorB) {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(128,128,4,128,128,125);
+      g.addColorStop(0, colorA); g.addColorStop(.35, colorB); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,256,256);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+    }
+    const nebulaGroup = new THREE.Group(); scene.add(nebulaGroup);
+    [
+      {x:-17,y:8,z:-25,s:23,a:'rgba(255,40,125,.22)',b:'rgba(112,25,125,.12)'},
+      {x:18,y:-8,z:-32,s:28,a:'rgba(86,73,255,.2)',b:'rgba(80,35,140,.1)'},
+      {x:0,y:15,z:-48,s:34,a:'rgba(255,105,180,.15)',b:'rgba(95,35,120,.08)'}
+    ].forEach(n => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(n.s,n.s), new THREE.MeshBasicMaterial({map:nebulaTexture(n.a,n.b),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+      m.position.set(n.x,n.y,n.z); m.rotation.z = Math.random()*Math.PI; nebulaGroup.add(m);
+    });
+
+    // Corazón 3D extruido y brillante.
+    const heartShape = new THREE.Shape();
+    heartShape.moveTo(0, -1.15);
+    heartShape.bezierCurveTo(-.15, -.8, -1.8, .15, -1.8, 1.25);
+    heartShape.bezierCurveTo(-1.8, 2.45, -.25, 2.65, 0, 1.55);
+    heartShape.bezierCurveTo(.25, 2.65, 1.8, 2.45, 1.8, 1.25);
+    heartShape.bezierCurveTo(1.8, .15, .15, -.8, 0, -1.15);
+    const heartGeo = new THREE.ExtrudeGeometry(heartShape, {depth:.75, bevelEnabled:true, bevelSegments:5, steps:2, bevelSize:.16, bevelThickness:.16, curveSegments:32});
+    heartGeo.computeVertexNormals();
+    const heartMat = new THREE.MeshPhysicalMaterial({ color:0xff315f, emissive:0xc00043, emissiveIntensity:1.75, metalness:.12, roughness:.19, clearcoat:1, clearcoatRoughness:.08 });
+    const heart = new THREE.Mesh(heartGeo, heartMat);
+    heart.position.set(0, -.45, 0); heart.scale.set(1.7,1.7,1.7); heart.rotation.z = 0;
+    scene.add(heart);
+
+    // Aura alrededor del corazón.
+    const aura = new THREE.Sprite(new THREE.SpriteMaterial({map:nebulaTexture('rgba(255,35,105,.48)','rgba(255,20,110,.12)'),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+    aura.scale.set(15,15,1); aura.position.set(0,.1,-1.8); scene.add(aura);
+
+    // Anillos orbitales finos, inclinados en distintos planos.
+    const orbitGroup = new THREE.Group(); scene.add(orbitGroup);
+    [
+      {rx:8.4,ry:3.7,rz:.25,color:0xff7db7,opacity:.3},
+      {rx:10.5,ry:5.3,rz:-.48,color:0x9c8cff,opacity:.22},
+      {rx:6.8,ry:5.7,rz:1.0,color:0xffc0d9,opacity:.16}
+    ].forEach(o => {
+      const pts=[]; for(let i=0;i<=240;i++){const a=i/240*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*o.rx,Math.sin(a)*o.ry,0));}
+      const geo=new THREE.BufferGeometry().setFromPoints(pts);
+      const line=new THREE.LineLoop(geo,new THREE.LineBasicMaterial({color:o.color,transparent:true,opacity:o.opacity}));
+      line.rotation.set(.45,o.rz,.15); orbitGroup.add(line);
+    });
+
+    // Mensajes como pequeñas placas luminosas que orbitan a diferentes distancias y alturas.
+    function labelTexture(text) {
+      const c=document.createElement('canvas'); c.width=1024; c.height=256;
+      const ctx=c.getContext('2d');
+      ctx.font = text.length > 25 ? 'italic 68px Georgia' : 'italic 78px Georgia';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.shadowColor='#ff4b9d'; ctx.shadowBlur=34;
+      ctx.fillStyle='rgba(255,242,250,1)'; ctx.fillText(text,512,128,940);
+      ctx.shadowBlur=0;
+      const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace; return tex;
+    }
+    const labels=[];
+    messages.forEach((msg,i)=>{
+      const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture(msg),transparent:true,depthWrite:false,opacity:.94,blending:THREE.AdditiveBlending}));
+      const angle=i/messages.length*Math.PI*2 + Math.random()*.22;
+      const radius=7.2+(i%4)*1.05;
+      const y=(Math.random()-.5)*10;
+      const z=(Math.random()-.5)*17;
+      sprite.position.set(Math.cos(angle)*radius,y,z);
+      const width=Math.min(12.5,Math.max(4.8,msg.length*.15));
+      sprite.scale.set(width, width*.29, 1);
+      scene.add(sprite);
+      labels.push({sprite,angle,radius,y,z,speed:(i%2===0?1:-1)*(.035+Math.random()*.025),phase:Math.random()*Math.PI*2});
+    });
+
+    // Pequeños corazones que acompañan la órbita principal.
+    const miniHearts=[];
+    const miniShape=new THREE.Shape();
+    miniShape.moveTo(0,-.25); miniShape.bezierCurveTo(-.05,-.1,-.38,.08,-.38,.3); miniShape.bezierCurveTo(-.38,.55,-.06,.58,0,.36); miniShape.bezierCurveTo(.06,.58,.38,.55,.38,.3); miniShape.bezierCurveTo(.38,.08,.05,-.1,0,-.25);
+    const miniGeo=new THREE.ShapeGeometry(miniShape);
+    for(let i=0;i<24;i++){
+      const mesh=new THREE.Mesh(miniGeo,new THREE.MeshBasicMaterial({color:i%3===0?0xff9ac7:0xff4e91,transparent:true,opacity:.7,side:THREE.DoubleSide}));
+      scene.add(mesh); miniHearts.push({mesh,a:i/24*Math.PI*2,r:5+Math.random()*8,y:(Math.random()-.5)*8,s:.4+Math.random()*.7});
+    }
+
+    const clock=new THREE.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      const t=clock.getElapsedTime();
+      // Acerca/aleja gradualmente sin saltos bruscos.
+      const offset = camera.position.clone().sub(controls.target);
+      const currentDistance = offset.length();
+      const easedDistance = THREE.MathUtils.lerp(currentDistance, wantedDistance, 0.085);
+      if (currentDistance > 0) camera.position.copy(controls.target).add(offset.multiplyScalar(easedDistance / currentDistance));
+      controls.update();
+      const pulse=1+Math.sin(t*2.15)*.035+Math.sin(t*4.3)*.012;
+      heart.scale.set(1.7*pulse,1.7*pulse,1.7*pulse);
+      heart.rotation.y=Math.sin(t*.35)*.13;
+      heart.rotation.x=Math.sin(t*.28)*.06;
+      aura.material.opacity=.72+Math.sin(t*1.8)*.13;
+      aura.scale.setScalar(15+Math.sin(t*1.8)*.6);
+      farStars.rotation.y=t*.003; farStars.rotation.x=Math.sin(t*.04)*.025;
+      midStars.rotation.y=-t*.006; midStars.rotation.x=Math.sin(t*.055)*.03;
+      nearStars.rotation.y=-t*.009; nearStars.rotation.x=Math.sin(t*.07)*.04;
+      nebulaGroup.rotation.z=Math.sin(t*.035)*.025;
+      orbitGroup.rotation.y=t*.035;
+      labels.forEach((o,i)=>{
+        const a=o.angle+t*o.speed;
+        o.sprite.position.x=Math.cos(a)*o.radius;
+        o.sprite.position.y=o.y+Math.sin(t*.55+o.phase)*.48+Math.sin(a*2)*.35;
+        o.sprite.position.z=o.z+Math.sin(a)*2.4;
+        const d=camera.position.distanceTo(o.sprite.position);
+        o.sprite.material.opacity=THREE.MathUtils.clamp(1-(d-22)/65,.3,.96);
+      });
+      miniHearts.forEach(o=>{
+        const a=o.a+t*.17;
+        o.mesh.position.set(Math.cos(a)*o.r, o.y+Math.sin(t+o.a)*.5, Math.sin(a)*o.r*.72);
+        o.mesh.scale.setScalar(o.s); o.mesh.lookAt(camera.position);
+      });
+      pinkLight.intensity=88+Math.sin(t*2)*10;
+      renderer.render(scene,camera);
+    }
+    animate();
+
+    document.querySelector('#soundless').addEventListener('click',()=>{
+      camera.position.set(0,1.5,31); controls.target.set(0,0,0); wantedDistance=31; controls.update();
+    });
+    addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    });
+    window.__galaxyLoaded?.();
+    document.querySelector('#loading').classList.add('hide');
+    setTimeout(()=>document.querySelector('#loading')?.remove(),900);
+  </script>
+</body>
+</html>
